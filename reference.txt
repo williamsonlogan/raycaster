@@ -1,0 +1,364 @@
+remstart
+////////////////////////////////////////////////////////////////////////////////
+// Raycast engine for AGK //////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/////// Open source ////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+      By
+Cliff Mellangård
+    Sweden
+ 
+   Forum id
+Cliff Mellangard 3DEGS
+////////////////////////////////////////////////////////////////////////////////
+Link to usefull sites. /////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+http://www.permadi.com/tutorial/raycast/index.html
+ 
+http://dev.opera.com/articles/view/creating-pseudo-3d-games-with-html-5-can-1/
+////////////////////////////////////////////////////////////////////////////////
+remend
+ 
+ 
+global AngDummy
+AngDummy = CreateSprite ( 0 )
+ 
+SetSyncRate ( 0, 1 )
+SetVirtualResolution ( GetDeviceWidth(), GetDeviceHeight() )
+//setsorttextures(0)
+global IMG
+IMG = LoadImage ( "128x128.png" )
+ 
+global IMG_Back
+IMG_Back = LoadImage ( "Back.png" )
+ 
+// number of map blocks in x-direction
+#constant mapWidth 32
+// number of map blocks in y-direction
+#constant mapHeight 24
+ 
+// how many pixels to draw a map block
+#constant miniMapScale 4
+ 
+// The same as minimap scale and is only used to get the right texture column for the screen column
+#constant TextureScale 128
+ 
+global dim map [mapWidth,mapHeight] as integer
+ 
+Random_Map ()
+ 
+// Number of rays we use
+#Constant numRays 210
+// this is 60/numrays
+#Constant rayspeed 0.2857142
+#Constant PI 3.1415926535
+// not used yet
+#Constant View_Distance 1.0
+// screen width divided by numrays
+#constant Column_Width 3
+// Create our rays //////////////////
+type sRay
+    x as float
+    y as float
+    Angle as float
+    Dot as integer
+endtype
+ 
+global dim Ray[numRays] as sRay
+ 
+for t=0 to numRays
+      i = CreateSprite ( 0 )
+      SetSpriteSize ( i , Column_Width , 2 )
+      SetSpritePosition ( i, -100, -100 )
+      SetSpriteColor ( i, 0 , 0 , 0 , 255 )
+      Ray [t].Dot=i
+next t
+ 
+i = CreateSprite ( IMG_Back )
+SetSpritePosition ( i , 5 , 0 )
+SetSpriteSize ( i , Column_Width*numRays , 480 )
+ 
+/////////////////////////////////////////////
+// Create our screen columns ////////////////
+/////////////////////////////////////////////
+type sColumn
+    ID as integer
+    IMG as integer
+    Height as integer
+endtype
+ 
+global dim Columns [numRays] as sColumn
+ 
+for t=1 to numRays
+      if t=1
+      i = CreateSprite ( IMG )
+      SetSpriteSize ( i , Column_Width , 120 )
+      //SetSpriteColor ( i, 255 , 255 , 255 , 255 )
+      SetSpriteAnimation ( i, 1, TextureScale, TextureScale )
+      else
+        i = clonesprite(Columns [1].ID)
+        SetSpritePosition ( i, 260+(t*Column_Width), 180 )
+      endif
+      Columns [t].ID=i
+next t
+ 
+global dim Block [mapWidth*mapHeight]
+ 
+for t=1 to (mapWidth*mapHeight)
+      i = CreateSprite ( 0 )
+      SetSpriteSize ( i , miniMapScale , miniMapScale )
+      SetSpriteColor ( i, 255 , 255 , 255 , 255 )
+      Block[t]=i
+next t
+/////////////////////////////////////////
+// Create our player ////////////////////
+////////////////////////////////////////
+type sPlayer
+    ID as integer
+    x as float
+    y as float
+    dir as integer
+    rot as float
+    speed as integer
+    moveSpeed as float
+    rotSpeed as float
+endtype
+ 
+global Player as sPlayer
+// current x, y position of the player
+Player.x = 16 : Player.y = 10
+// the direction that the player is turning, either -1 for left or 1 for right.
+Player.dir = 0
+// the current angle of rotation
+Player.rot = 0
+// is the playing moving forward (speed = 1) or backwards (speed = -1).
+Player.speed = 0
+// how far (in map units) does the player move each step/update( its this number * frame time )
+Player.moveSpeed = 2.0
+// old ////// ( Number math.PI ) how much does the player rotate each step/update (in radians)
+Player.rotSpeed = 120.0
+ 
+i = CreateSprite ( 0 )
+SetSpriteSize ( i , miniMapScale , miniMapScale )
+SetSpriteColor ( i, 0 , 0 , 0 , 255 )
+SetSpritePosition ( i, Player.x*miniMapScale, Player.y*miniMapScale )
+Player.ID = i
+ 
+ 
+Draw_MiniMap ()
+global GFT#
+do
+   GFT# = GetFrameTime()
+   Check_keys ()
+   Move_Player ()
+   Raycast()
+   if GetRawKeyPressed( 9 )
+     Random_Map ()
+     Draw_MiniMap ()
+   endif
+   if GetRawKeyPressed( 32 ) then inc floor_on
+   print("                                "+str( Screenfps() ) )
+   Sync()
+loop
+ 
+function Random_Map ()
+for x = 0 to mapWidth-1
+    for y = 0 to mapHeight-1
+    map [ x , y ]=0
+    if Random(0,10)=1
+        map [ x , y ]=1
+        map [ x+1 , y ]=1
+    if x-1>0 then map [ x-1 , y ]=1
+    if x+2<mapWidth then map [ x+2 , y ]=1
+    endif
+    if Random(0,10)=1
+        if y-1>0 then map [ x , y-1 ]=1
+        map [ x , y+1 ]=1
+    if y+2<mapHeight then map [ x , y+2 ]=1
+    map [ x , y ]=1
+    endif
+    if x=0 or x=mapWidth-1 then map [ x , y ]=1
+    if y=0 or y=mapHeight-1 then map [ x , y ]=1
+    next y
+next x
+ 
+endfunction
+ 
+function Check_keys ()
+   Player.speed = 0
+   if GetRawKeystate( 38 ) then Player.speed = 1
+   if GetRawKeystate( 40 ) then Player.speed = -1
+   Player.dir = 0
+   if GetRawKeystate( 39 ) then Player.dir = 1
+   if GetRawKeystate( 37 ) then Player.dir = -1
+endfunction
+ 
+function Move_Player ()
+    // player will move this far along the current direction vector
+    moveStep# = player.speed * (player.moveSpeed*GFT#)
+    // add rotation if player is rotating (player.dir != 0)
+    player.rot = player.rot+(player.dir * (player.rotSpeed*GFT#))
+    // calculate new player position with simple trigonometry
+    newX# = player.x + (cos(player.rot) * moveStep#)
+    newY# = player.y + (Sin(player.rot) * moveStep#)
+    // Basic wall collision
+    newX=newX#
+    newY=newY#
+    //if map [newX,newY]>0 then ExitFunction
+    // set new position
+    player.x = newX#
+    player.y = newY#
+ 
+    SetSpritePosition ( Player.ID, Player.x*miniMapScale, Player.y*miniMapScale )
+    setspriteangle (Player.ID,player.rot)
+//print("                          "+str(WrapAngle(player.rot)))
+endfunction
+ 
+ 
+function Raycast()
+  PLx# = player.x*32
+  PLy# = player.y*32
+  StartAngle#=WrapAngle(player.rot-30)
+  rayspd#=0.0
+ 
+  for i = 1 to numRays
+    //setspriteangle (DotRay [i],StartAngle#)
+    cosAng#=cos(StartAngle#)
+    sinAng#=Sin(StartAngle#)
+    move#=0.0
+ 
+    target=0
+    while target=0
+       move# = move#+0.025
+       newX = player.x + ( cosAng# * move#)
+       newY = player.y + ( sinAng# * move#)
+       target=1
+ 
+       select ( map [newX,newY] )
+         case 0:
+           target = 0
+         endcase
+       endselect
+ 
+     endwhile
+ 
+     // Backtrack to make it smooth
+     target=0
+     while target=0
+        move#=move#-0.01
+        newX = player.x + ( cosAng# * move#)
+        newY = player.y + ( sinAng# * move#)
+        if newX<0 then newX=0
+        if newY<0 then newY=0
+        select ( map [newX,newY] )
+            case 0:
+              target=1
+              newX# = (player.x + ( cosAng# * move#))
+              newY# = (player.y + ( sinAng# * move#))
+              Ray[i].x =  newX#*32
+              Ray[i].y =  newY#*32
+            endcase
+         endselect
+ 
+      endwhile
+      // (newx#-y#)+3 to be displayed right on the minimap,screws up raycast
+ 
+      TextureX#=newX#*TextureScale
+      TextureY#=newY#*TextureScale
+      TextureX#=TextureX#-(newX*TextureScale)
+      TextureY#=TextureY#-(newY*TextureScale)
+      // convert it to an integer
+      TextureX=TextureX#+(TextureScale/2)
+      TextureY=TextureY#+(TextureScale/2)
+ 
+      //hitting top or bottom
+      GetTexture( i , TextureY , TextureX )
+      //hitting left or right
+      GetTexture( i , TextureX , TextureY )
+ 
+      Remstart
+      64 is the size of the wall blocks.
+      277 the viewing plane .
+      distance = (( 64 / Actual distance *cos( angle in the fov ))) * 277)
+      remend
+ 
+      Columns [i].Height = ( (64 / ( Distance ( PLx# , PLy# , Ray[i].x , Ray[i].y ) *cos( WrapAngle(30-rayspd#) )))*300 )
+ 
+      fade=Columns [i].Height/2
+      if fade>255 then fade=255
+      SetSpriteColor ( Columns [i].ID , fade , fade , fade , 255 )
+      SetSpriteFrame(Columns [i].ID , Columns [i].IMG )
+      setspritesize(Columns [i].ID ,Column_Width, Columns [i].Height )
+      SetSpritePosition ( Columns [i].ID , 2+(i*Column_Width), 240-( Columns [i].Height/2 ) )
+ 
+      StartAngle#=WrapAngle(StartAngle#+rayspeed)
+      rayspd#=rayspd#+rayspeed
+   next i
+ 
+endfunction
+ 
+// used to get pixel on floor
+function getGrid(x,y)
+  Tile_size=64
+  ``converts it to an grid grid nr
+  X1=x/Tile_size
+  Y1=y/Tile_size
+  ``converts it to an world position
+  X2=(X1*Tile_size)-Tile_size
+  Y2=(Y1*Tile_size)-Tile_size
+  ``here do we get an pixel cord inside that tile
+  X3=((x-X2)-Tile_size)//+1
+  Y3=((y-Y2)-Tile_size)//+1
+result=X3+(Y3*Tile_size)
+ENDFUNCTION result
+ 
+function GetTexture( Column , Source , Target )
+    select ( Source )
+ 
+      case 0:
+         Columns [Column].IMG = Target
+      endcase
+ 
+      case 1:
+         Columns [Column].IMG = Target
+      endcase
+ 
+      case 127:
+         Columns [Column].IMG = Target
+      endcase
+ 
+      case TextureScale:
+         Columns [Column].IMG = Target
+      endcase
+ 
+    endselect
+endfunction
+ 
+function Distance (x#,y#,x2#,y2#)
+    distX# = x# - x2#
+    distY# = y# - y2#
+    dist# = sqrt ( ( distX# * distX# ) + ( distY# * distY# ) )
+endfunction dist#
+ 
+function WrapAngle(ang#)
+    setspriteangle(AngDummy,ang#)
+    result#=getspriteangle(AngDummy)
+endfunction result#
+ 
+/////////////////////////////////////////////////////////////////////
+function Draw_MiniMap ()
+   rect=1
+   for y = 0 to mapHeight-1
+      for x = 0 to mapWidth-1
+         if map [ x , y ] = 1
+            SetSpriteColor ( Block[rect], 155 , 155 , 155 , 255 )
+            SetSpritePosition ( Block[rect], x*miniMapScale, y*miniMapScale )
+            inc rect
+         else
+            SetSpriteColor ( Block[rect], 255 , 255 , 255 , 255 )
+            SetSpritePosition ( Block[rect], x*miniMapScale, y*miniMapScale )
+            inc rect
+         endif
+      next x
+   next y
+endfunction

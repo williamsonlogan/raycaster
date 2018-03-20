@@ -1,0 +1,11 @@
+﻿  Core.cpp
+Core.cpp(482): warning C4244: 'argument': conversion from 'WPARAM' to 'unsigned int', possible loss of data
+Core.cpp(500): warning C4244: 'argument': conversion from 'WPARAM' to 'unsigned int', possible loss of data
+Core.cpp(510): warning C4244: 'argument': conversion from 'WPARAM' to 'unsigned int', possible loss of data
+Core.cpp(517): warning C4244: 'argument': conversion from 'WPARAM' to 'unsigned int', possible loss of data
+Core.cpp(524): warning C4244: 'argument': conversion from 'WPARAM' to 'unsigned int', possible loss of data
+Core.cpp(535): warning C4244: 'argument': conversion from 'WPARAM' to 'unsigned int', possible loss of data
+  template.cpp
+template.cpp(190): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+  Generating Code...
+  Template.vcxproj -> G:\Steam\steamapps\common\App Game Kit 2\Tier 2\apps\raycaster\Final\AGKRaycaster64.exe
