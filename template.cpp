@@ -38,14 +38,14 @@ void app::Begin(void)
 {
 	agk::SetVirtualResolution(screenWidth, screenHeight);
 	agk::SetClearColor(50, 50, 50); // grey
-	agk::SetSyncRate(60, 0);
+	agk::SetSyncRate(30, 0);
 	agk::SetScissor(0, 0, 0, 0);
 	agk::SetFolder("media");
 	agk::SetDefaultMagFilter(0);
 
 	posX = 22, posY = 12;  //x and y start position
 	dirX = -1, dirY = 0; //initial direction vector
-	planeX = 0, planeY = 0.66; //the 2d raycaster version of camera plane
+	planeX = 0, planeY = 0.60; //the 2d raycaster version of camera plane
 
 	time = 0; //time of current frame
 	oldTime = 0; //time of previous frame
@@ -69,6 +69,8 @@ void app::Begin(void)
 			texture[i].push_back(agk::MakeColor(agk::GetMemblockInt(memblock, j), agk::GetMemblockInt(memblock, j + 1), agk::GetMemblockInt(memblock, j + 2)));
 		}
 	}
+
+	buffer[0][0] = 0;
 }
 
 int app::Loop(void)
@@ -78,7 +80,7 @@ int app::Loop(void)
 	for (int x = 0; x < screenWidth; x++)
 	{
 		//calculate ray position and direction
-		double cameraX = 2 * x / double(agk::GetVirtualWidth()) - 1; //x-coordinate in camera space
+		double cameraX = 2 * x / double(screenWidth) - 1; //x-coordinate in camera space
 		double rayDirX = dirX + planeX * cameraX;
 		double rayDirY = dirY + planeY * cameraX;
 
@@ -179,7 +181,10 @@ int app::Loop(void)
 			int color = texture[texNum][texHeight * texY + texX];
 			//make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
 			if (side == 1) color = (color >> 1) & 8355711;
-			lastBuffer[y][x] = buffer[y][x];
+			if (buffer[y][x] != lastBuffer[y][x])
+			{
+				lastBuffer[y][x] = buffer[y][x];
+			}
 			buffer[y][x] = color;
 		}
 	}
@@ -200,7 +205,7 @@ int app::Loop(void)
 	agk::ClearScreen();
 
 	//speed modifiers
-	double moveSpeed = agk::GetFrameTime() * 5.0; //the constant value is in squares/second
+	double moveSpeed = agk::GetFrameTime() * 3.0; //the constant value is in squares/second
 	double rotSpeed = agk::GetFrameTime() * 3.0; //the constant value is in radians/second
 
 	//move forward if no wall in front of you

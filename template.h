@@ -19,8 +19,8 @@
 // used to make a more unique folder for the write path
 #define COMPANY_NAME "Feesh Games"
 
-#define screenWidth 256
-#define screenHeight 144
+#define screenWidth 512
+#define screenHeight 288
 #define texWidth 64
 #define texHeight 64
 #define mapWidth 24
