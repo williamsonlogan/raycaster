@@ -1,4 +1,4 @@
-// Includes
+﻿// Includes
 #include "template.h"
 
 // Namespace
@@ -37,7 +37,7 @@ int worldMap[mapWidth][mapHeight] =
 void app::Begin(void)
 {
 	agk::SetVirtualResolution(screenWidth, screenHeight);
-	agk::SetClearColor(0, 0, 0); // black
+	agk::SetClearColor(50, 50, 50); // grey
 	agk::SetSyncRate(60, 0);
 	agk::SetScissor(0, 0, 0, 0);
 	agk::SetFolder("media");
@@ -160,7 +160,7 @@ int app::Loop(void)
 		//texturing calculations
 		int texNum = worldMap[mapX][mapY] - 1; //1 subtracted from it so that texture 0 can be used!
 
-											   //calculate value of wallX
+		//calculate value of wallX
 		double wallX; //where exactly the wall was hit
 		if (side == 0) wallX = posY + perpWallDist * rayDirY;
 		else           wallX = posX + perpWallDist * rayDirX;
@@ -179,19 +179,22 @@ int app::Loop(void)
 			int color = texture[texNum][texHeight * texY + texX];
 			//make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
 			if (side == 1) color = (color >> 1) & 8355711;
+			lastBuffer[y][x] = buffer[y][x];
 			buffer[y][x] = color;
 		}
 	}
 
-	for (int y = 0; y < screenHeight; y++)
+	for (int x = 0; x < screenWidth; x++)
 	{
-		for (int x = 0; x < screenWidth; x++)
+		for (int y = 0; y < screenHeight; y++)
 		{
-			agk::DrawLine(x, y, x, y, buffer[y][x], buffer[y][x]);
+			if(buffer[y][x] != lastBuffer[y][x])
+				agk::DrawBox(x, y, x + 1, y + 1, buffer[y][x], buffer[y][x], buffer[y][x], buffer[y][x], 1);
 		}
 	}
 
-	for (int x = 0; x < screenWidth; x++) for (int y = 0; y < screenHeight; y++) buffer[y][x] = 0; //clear the buffer instead of cls()
+	//for (int x = 0; x < screenWidth; x++) for (int y = 0; y < screenHeight; y++) buffer[y][x] = 0; //clear the buffer instead of cls()
+	memset(buffer, 0, sizeof(buffer[0][0]) * screenHeight * screenWidth);
 
 	agk::Sync();
 	agk::ClearScreen();

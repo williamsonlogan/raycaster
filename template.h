@@ -19,8 +19,8 @@
 // used to make a more unique folder for the write path
 #define COMPANY_NAME "Feesh Games"
 
-#define screenWidth 512
-#define screenHeight 288
+#define screenWidth 256
+#define screenHeight 144
 #define texWidth 64
 #define texHeight 64
 #define mapWidth 24
@@ -50,6 +50,7 @@ public:
 	double oldTime;
 
 	int buffer[screenHeight][screenWidth]; // y-coordinate first because it works per scanline
+	int lastBuffer[screenHeight][screenWidth]; // for comparing changed pixels
 	std::vector<int> texture[8];
 	std::vector<int> loadedTextures;
 };
